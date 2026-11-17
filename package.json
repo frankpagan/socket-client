@@ -37,7 +37,6 @@
   "type": "module",
   "main": "./src/index.js",
   "dependencies": {
-    "@cocreate/socket": "^3.0.1",
     "@cocreate/config": "^2.0.0",
     "@cocreate/local-storage": "^2.0.0",
     "@cocreate/organizations": "^2.0.0",

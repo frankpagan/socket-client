@@ -24,7 +24,6 @@
 
 import { ObjectId, uuid, getClientInfo } from "@cocreate/utils";
 import config from "@cocreate/config";
-import { BinaryReceiver, deserialize, sendBinary } from "@cocreate/socket/binary";
 
 const isBrowser = typeof window !== "undefined";
 
@@ -258,8 +257,6 @@ const CoCreateSocketClient = {
 
                 const WebSocketClass = await getWebSocketImpl();
                 socket = new WebSocketClass(url, opt);
-                socket.binaryType = "arraybuffer";
-                socket.binaryReceiver = new BinaryReceiver();
                 socket.id = options.socketId;
                 socket.connected = false;
                 socket.clientId = this.clientId;
@@ -291,7 +288,6 @@ const CoCreateSocketClient = {
             };
 
             socket.onclose = function (event) {
-                socket.binaryReceiver?.clear();
                 notifyDisconnect(event);
                 switch (event.code) {
                     case 1000: 
@@ -304,7 +300,6 @@ const CoCreateSocketClient = {
             };
 
             socket.onerror = function (event) {
-                socket.binaryReceiver?.clear();
                 notifyDisconnect(event);
                 if (!isBrowser) console.error("[@cocreate/socket-client] Server socket transport error:", event.error || event);
                 else if (!window.navigator.onLine)
@@ -315,13 +310,7 @@ const CoCreateSocketClient = {
 
             socket.onmessage = function (message) {
                 try {
-                    const complete = socket.binaryReceiver.push(message.data);
-                    if (!complete) return;
-                    try {
-                        message = deserialize(complete);
-                    } finally {
-                        socket.binaryReceiver.release(complete);
-                    }
+                    message = JSON.parse(message.data);
                     // Transport open precedes server authentication and message setup.
                     // Flush requests only after the server confirms it is ready.
                     if (message.method === "connect") {
@@ -527,12 +516,7 @@ const CoCreateSocketClient = {
                 ) {
                     delete data.status;
 
-                    try {
-                        await sendBinary(socket, data);
-                    } catch (error) {
-                        reject(error);
-                        return;
-                    }
+                    socket.send(JSON.stringify(data));
                     data.status = "sent";
                 } else {
                     data.status = "queued";
